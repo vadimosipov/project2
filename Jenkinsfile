@@ -1,6 +1,7 @@
 import java.util.StringJoiner
 import java.nio.file.Files
 //import java.nio.file.Path
+import java.nio.file.Paths
 
 pipeline {
     agent any
@@ -25,9 +26,11 @@ pipeline {
                         return joiner.toString()
                     }
 
+                    def path2 = Paths.get("resources", "tasks.txt") 
                     def path = new File("resources/tasks.txt").toPath()
                     println path.toAbsolutePath()
-                    def strings = Files.readAllLines(path)
+                    println path2.toAbsolutePath()
+                    def strings = Files.readAllLines(path2)
                     strings.forEach { taskId -> 
                         def params = [
                             task_id: "${taskId}",
