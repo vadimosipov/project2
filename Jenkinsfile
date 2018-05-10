@@ -10,8 +10,9 @@ pipeline {
         LOCAL_STORAGE_DIR = "cells"
     }
     stages {
-        stage('Create dir') {
+        stage('Create storage dir') {
             steps {
+                deleteDir('${LOCAL_STORAGE_DIR}')
                 sh "mkdir ${LOCAL_STORAGE_DIR}"
             }
         }
@@ -44,7 +45,8 @@ pipeline {
     }
     post {
         always {
-            sendNotification("Your build completed, pipeline: ${currentBuild.fullDisplayName}, please check: ${env.BUILD_URL}") 
+            sendNotification("Your build completed, pipeline: ${currentBuild.fullDisplayName}, please check: ${env.BUILD_URL}")
+            deleteDir('${LOCAL_STORAGE_DIR}')
         }
     }
 }
