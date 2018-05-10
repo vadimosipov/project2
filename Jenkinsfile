@@ -12,7 +12,9 @@ pipeline {
     stages {
         stage('Create storage dir') {
             steps {
-                deleteDir('${LOCAL_STORAGE_DIR}')
+                dir("${LOCAL_STORAGE_DIR}") {
+                    deleteDir()
+                }
                 sh "mkdir ${LOCAL_STORAGE_DIR}"
             }
         }
