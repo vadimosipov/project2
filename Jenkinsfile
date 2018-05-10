@@ -98,6 +98,6 @@ def sendNotification(message) {
         mail to: 'osipov.vad@gmail.com', subject: "Vigo Pipeline", body: message
     } catch(e) {
         echo message
-        echo e
+        echo "${e}"
     }
 }
