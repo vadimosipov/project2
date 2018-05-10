@@ -15,7 +15,6 @@ pipeline {
             }
             steps {
                 script {
-                    echo "${VIGO_PASS}"
 
                     @NonCPS 
                     def join = { parameters -> 
@@ -26,11 +25,31 @@ pipeline {
                         return joiner.toString()
                     }
 
-                    def path2 = Paths.get("resources", "tasks.txt") 
-                    def path = new File("resources/tasks.txt").toPath()
-                    println path.toAbsolutePath()
-                    println path2.toAbsolutePath()
-                    def strings = Files.readAllLines(path2)
+                    // def path2 = Paths.get("resources", "tasks.txt") 
+                    // def path = new File("resources/tasks.txt").toPath()
+                    // println path.toAbsolutePath()
+                    // println path2.toAbsolutePath()
+                    // def strings = Files.readAllLines(path2)
+                    def content = readFile("resources/tasks.txt")
+                    echo "${content.getClass()}"
+                    echo "${content}"
+                    for (taskId in content.split("\n")) {
+                        def params = [
+                            task_id: "${taskId}",
+                            mode: "cells", 
+                            periods: ["2017-15"],
+                            show_summary: false, 
+                            scale: 1, 
+                            format: "csv", 
+                            client: "${VIGO_USER}",
+                            key: "${VIGO_PASS}"
+                        ]
+                        def data = join(params)
+                        def file = "${params.task_id}-${params.periods[0]}.${params.format}"
+                        def url = "uxgeo.vigo.ru/export-data"
+                        sh "curl -X POST ${url} -d \'${data}\' -o ${file}"
+                    }
+                /*
                     strings.forEach { taskId -> 
                         def params = [
                             task_id: "${taskId}",
@@ -47,6 +66,7 @@ pipeline {
                         def url = "uxgeo.vigo.ru/export-data"
                         sh "curl -X POST ${url} -d \'${data}\' -o ${file}"
                     }
+                */
                 }
             }
         }
