@@ -48,7 +48,9 @@ pipeline {
     post {
         always {
             sendNotification("Your build completed, pipeline: ${currentBuild.fullDisplayName}, please check: ${env.BUILD_URL}")
-            deleteDir('${LOCAL_STORAGE_DIR}')
+            dir("${LOCAL_STORAGE_DIR}") {
+                    deleteDir()
+                }
         }
     }
 }
