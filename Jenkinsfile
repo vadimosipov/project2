@@ -1,12 +1,19 @@
 import java.util.StringJoiner
 import java.nio.file.Files
-//import java.nio.file.Path
 import java.nio.file.Paths
 
 pipeline {
     agent any
     triggers { cron('0 15 1 * *') }
+    environment {
+        LOCAL_STORAGE_DIR = "cells"
+    }
     stages {
+        stage('Create dir') {
+            steps {
+                sh "mkdir ${LOCAL_STORAGE_DIR}"
+            }
+        }
         stage('Download') {
             environment {
                 VIGO_CREDENTIALS = credentials('vigo_credentials')
@@ -15,62 +22,15 @@ pipeline {
             }
             steps {
                 script {
-
-                    @NonCPS 
-                    def join = { parameters -> 
-                        def joiner = new StringJoiner(",", "{", "}");
-                        for (record in parameters) {
-                            joiner.add("\"${record.key}\": \"${record.value}\"");
-                        }                  
-                        return joiner.toString()
+                    def download = { url, body, file -> 
+                        sh "curl -X POST ${url} -d \'${body}\' -o ${file}"
+                        checkFileSize(file)
                     }
-
-                    // def path2 = Paths.get("resources", "tasks.txt") 
-                    // def path = new File("resources/tasks.txt").toPath()
-                    // println path.toAbsolutePath()
-                    // println path2.toAbsolutePath()
-                    // def strings = Files.readAllLines(path2)
-                    def content = readFile("resources/tasks.txt")
-                    echo "${content.getClass()}"
-                    echo "${content}"
-                    for (taskId in content.split("\n")) {
-                        def params = [
-                            task_id: "${taskId}",
-                            mode: "cells", 
-                            periods: ["2017-15"],
-                            show_summary: false, 
-                            scale: 1, 
-                            format: "csv", 
-                            client: "${VIGO_USER}",
-                            key: "${VIGO_PASS}"
-                        ]
-                        def data = join(params)
-                        def file = "${params.task_id}-${params.periods[0]}.${params.format}"
-                        def url = "uxgeo.vigo.ru/export-data"
-                        sh "curl -X POST ${url} -d \'${data}\' -o ${file}"
-                    }
-                /*
-                    strings.forEach { taskId -> 
-                        def params = [
-                            task_id: "${taskId}",
-                            mode: "cells", 
-                            periods: ["2017-15"],
-                            show_summary: false, 
-                            scale: 1, 
-                            format: "csv", 
-                            client: "${VIGO_USER}",
-                            key: "${VIGO_PASS}"
-                        ]
-                        def data = join(params)
-                        def file = "${params.task_id}-${params.periods[0]}.${params.format}"
-                        def url = "uxgeo.vigo.ru/export-data"
-                        sh "curl -X POST ${url} -d \'${data}\' -o ${file}"
-                    }
-                */
+                    generateRequsts("${LOCAL_STORAGE_DIR}", download)
                 }
             }
         }
-        stage('Save') {
+        stage('Save to hdfs') {
             steps {
                 echo '1'
                 // sh "hdfs dfs -put ${file} /tmp/vosipov"
@@ -79,9 +39,55 @@ pipeline {
     }
     post {
         always {
-            mail to: 'osipov.vad@gmail.com',
-                 subject: "Completed Pipeline: ${currentBuild.fullDisplayName}",
-                 body: "Your build completed, please check: ${env.BUILD_URL}"
+            def message = "Your build completed, pipeline: ${currentBuild.fullDisplayName}, please check: ${env.BUILD_URL}"
+            sendNotification(message) 
         }
+    }
+}
+
+def generateRequsts(storageDir, download) {
+    @NonCPS 
+    def join = { parameters -> 
+        def joiner = new StringJoiner(",", "{", "}");
+        for (record in parameters) {
+            joiner.add("\"${record.key}\": \"${record.value}\"");
+        }                  
+        return joiner.toString()
+    }
+
+    def url = "uxgeo.vigo.ru/export-data"
+    def tasks = readFile("resources/tasks.txt")
+    for (taskId in tasks.split("\n")) {
+        def params = [
+            task_id: "${taskId}",
+            mode: "cells", 
+            periods: ["2017-15"],
+            show_summary: false, 
+            scale: 1, 
+            format: "csv", 
+            client: "${VIGO_USER}",
+            key: "${VIGO_PASS}"
+        ]
+        def body = join(params)
+        def file = "${storageDir}/${params.task_id}-${params.periods[0]}.${params.format}"
+        download(url, body, file)
+    }
+}
+
+def checkFileSize(file) {
+    def absoluteFilePath = pwd() + "/${file}"
+    def size = Files.size(Paths.get(absoluteFilePath))
+    if (size < 1024) {
+        def warning = "File size is less than 1024 bytes, name: ${currentBuild.fullDisplayName}, please check: ${env.BUILD_URL}"
+        sendNotification(warning)
+    }
+}
+
+def sendNotification(message) {
+    try {
+        mail to: 'osipov.vad@gmail.com', subject: "Vigo Pipeline", body: message
+    } catch(e) {
+        echo message
+        echo e
     }
 }
