@@ -1,4 +1,6 @@
 import java.util.StringJoiner
+import java.nio.file.Files
+//import java.nio.file.Path
 
 pipeline {
     agent any
@@ -6,10 +8,14 @@ pipeline {
     stages {
         stage('Download') {
             environment {
-                VIGO_PASSWORD = credentials('vigo_credentials')
+                VIGO_CREDENTIALS = credentials('vigo_credentials')
+                VIGO_USER = "${env.VIGO_CREDENTIALS_USR}"
+                VIGO_PASS = "${env.VIGO_CREDENTIALS_PSW}"
             }
             steps {
                 script {
+                    echo "${VIGO_PASS}"
+
                     @NonCPS 
                     def join = { parameters -> 
                         def joiner = new StringJoiner(",", "{", "}");
@@ -19,9 +25,9 @@ pipeline {
                         return joiner.toString()
                     }
 
-                    Path path = new File("resources/tasks.txt").toPath();
-                    System.out.println(path.toAbsolutePath());
-                    List<String> strings = Files.readAllLines(path);
+                    def path = new File("resources/tasks.txt").toPath()
+                    println path.toAbsolutePath()
+                    def strings = Files.readAllLines(path)
                     strings.forEach { taskId -> 
                         def params = [
                             task_id: "${taskId}",
@@ -30,18 +36,14 @@ pipeline {
                             show_summary: false, 
                             scale: 1, 
                             format: "csv", 
-                            client: "megafon",
-                            key: "${VIGO_PASSWORD}"
+                            client: "${VIGO_USER}",
+                            key: "${VIGO_PASS}"
                         ]
                         def data = join(params)
                         def file = "${params.task_id}-${params.periods[0]}.${params.format}"
                         def url = "uxgeo.vigo.ru/export-data"
                         sh "curl -X POST ${url} -d \'${data}\' -o ${file}"
                     }
-
-                    echo "${VIGO_PASSWORD}"
-
-                    
                 }
             }
         }
