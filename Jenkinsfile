@@ -2,11 +2,6 @@ pipeline {
     agent any
     triggers { cron('0 15 1 * *') }
     stages {
-        stage('Checkout') {
-            steps {
-                git url: ''
-            }
-        }
         stage('Download') {
             steps {
                 script {
@@ -30,12 +25,20 @@ pipeline {
                     def data = joiner.toString()
                     def file = "${params.task_id}-${params.periods[0]}.${params.format}"
                     sh "curl -X POST ${url} -d \'${data}\' -o ${file}"
-                    sh "hdfs dfs -put ${file} /tmp/vosipov"
                 }
+            }
+        }
+        stage('Save') {
+            steps {
+                // sh "hdfs dfs -put ${file} /tmp/vosipov"
             }
         }
     }
     post {
-        
+        always {
+            mail to: 'osipov.vad@gmail.com',
+                 subject: "Completed Pipeline: ${currentBuild.fullDisplayName}",
+                 body: "Your build completed, please check: ${env.BUILD_URL}"
+        }
     }
 }
