@@ -39,8 +39,7 @@ pipeline {
     }
     post {
         always {
-            def message = "Your build completed, pipeline: ${currentBuild.fullDisplayName}, please check: ${env.BUILD_URL}"
-            sendNotification(message) 
+            sendNotification("Your build completed, pipeline: ${currentBuild.fullDisplayName}, please check: ${env.BUILD_URL}") 
         }
     }
 }
