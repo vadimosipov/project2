@@ -49,8 +49,8 @@ pipeline {
         always {
             sendNotification("Your build completed, pipeline: ${currentBuild.fullDisplayName}, please check: ${env.BUILD_URL}")
             dir("${LOCAL_STORAGE_DIR}") {
-                    deleteDir()
-                }
+                deleteDir()
+            }
         }
     }
 }
@@ -70,7 +70,7 @@ def generateRequsts(year, week, download) {
     for (taskId in tasks.split("\n")) {
         def params = [
             task_id: "${taskId}",
-            mode: "${LOCAL_STORAGE_DIR}", 
+            mode: "cells", 
             periods: ["${year}-${week}"],
             show_summary: false, 
             scale: 1, 
@@ -79,7 +79,7 @@ def generateRequsts(year, week, download) {
             key: "${VIGO_PASS}"
         ]
         def body = join(params)
-        def file = "${storageDir}/${params.task_id}-${params.periods[0]}.${params.format}"
+        def file = "${LOCAL_STORAGE_DIR}/${params.task_id}-${params.periods[0]}.${params.format}"
         download(url, body, file)
     }
 }
