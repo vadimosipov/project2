@@ -1,6 +1,7 @@
 import java.util.StringJoiner
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.time.LocalDate
 
 pipeline {
     agent any
@@ -22,11 +23,15 @@ pipeline {
             }
             steps {
                 script {
-                    def download = { url, body, file -> 
-                        sh "curl -X POST ${url} -d \'${body}\' -o ${file}"
-                        checkFileSize(file)
+                    def year = LocalDate.now().getYear() - 1
+                    def weeks = [15]
+                    for (week in weeks) {
+                        def startDownloading = { url, body, file -> 
+                            sh "curl -X POST ${url} -d \'${body}\' -o ${file}"
+                            checkFileSize(file)
+                        }
+                        generateRequsts(year, week, startDownloading)
                     }
-                    generateRequsts("${LOCAL_STORAGE_DIR}", download)
                 }
             }
         }
@@ -44,7 +49,7 @@ pipeline {
     }
 }
 
-def generateRequsts(storageDir, download) {
+def generateRequsts(year, week, download) {
     @NonCPS 
     def join = { parameters -> 
         def joiner = new StringJoiner(",", "{", "}");
@@ -59,8 +64,8 @@ def generateRequsts(storageDir, download) {
     for (taskId in tasks.split("\n")) {
         def params = [
             task_id: "${taskId}",
-            mode: "cells", 
-            periods: ["2017-15"],
+            mode: "${LOCAL_STORAGE_DIR}", 
+            periods: ["${year}-${week}"],
             show_summary: false, 
             scale: 1, 
             format: "csv", 
